@@ -14,30 +14,29 @@ class EventController extends Controller
         try {
             // Test database connection
             DB::connection()->getPdo();
-            
+
             // Try to get events from database
             $events = Event::published()->upcoming()->paginate(12);
-            
+
             // If no data in database, use dummy data
             if ($events->isEmpty()) {
                 $eventsData = $this->getDummyEvents();
                 // Convert array to collection with pagination-like structure
                 $events = $this->createPaginatedCollection($eventsData, 12);
             }
-            
         } catch (Exception $e) {
             // Database connection failed or model not ready, use dummy data
             $eventsData = $this->getDummyEvents();
             $events = $this->createPaginatedCollection($eventsData, 12);
         }
-        
+
         return view('concert', compact('events'));
     }
 
     public function detail($id)
     {
         $event = null;
-        
+
         // Check if database connection is available before querying
         try {
             // Test database connection
@@ -48,12 +47,12 @@ class EventController extends Controller
             // Database connection failed, we'll use dummy data
             $event = null;
         }
-        
+
         // If no event from database, use dummy data
         if (!$event) {
             $eventsData = $this->getDummyEvents();
             $eventArray = $eventsData[$id] ?? null;
-            
+
             if (!$eventArray) {
                 // Event not found - create default "not found" event
                 $eventArray = [
@@ -73,11 +72,11 @@ class EventController extends Controller
                     'status' => 'not_found'
                 ];
             }
-            
+
             // Convert array to object
             $event = (object) $eventArray;
         }
-        
+
         return view('detail', compact('event'));
     }
 
@@ -108,21 +107,22 @@ class EventController extends Controller
             // Check if event exists in database
             DB::connection()->getPdo();
             $event = Event::find($id);
-            
+
             if ($event) {
                 // Check availability
-                if ($event->max_participants && 
-                    ($event->current_participants + $validated['quantity']) > $event->max_participants) {
+                if (
+                    $event->max_participants &&
+                    ($event->current_participants + $validated['quantity']) > $event->max_participants
+                ) {
                     return redirect()->back()
-                        ->with('error', 'Maaf, tiket yang tersedia tidak mencukupi. Sisa tiket: ' . 
-                               ($event->max_participants - $event->current_participants))
+                        ->with('error', 'Maaf, tiket yang tersedia tidak mencukupi. Sisa tiket: ' .
+                            ($event->max_participants - $event->current_participants))
                         ->withInput();
                 }
-                
+
                 // Update participant count (in real app, this would be in a booking table)
                 $event->increment('current_participants', $validated['quantity']);
             }
-            
         } catch (Exception $e) {
             // Database not available, just show success message
         }
@@ -131,10 +131,12 @@ class EventController extends Controller
         // 1. Create a booking record
         // 2. Send confirmation email
         // 3. Process payment if required
-        
-        return redirect()->back()->with('success', 
-            'Booking berhasil! Konfirmasi akan dikirim ke email ' . $validated['email'] . 
-            ' untuk ' . $validated['quantity'] . ' tiket.');
+
+        return redirect()->back()->with(
+            'success',
+            'Booking berhasil! Konfirmasi akan dikirim ke email ' . $validated['email'] .
+                ' untuk ' . $validated['quantity'] . ' tiket.'
+        );
     }
 
     public function search(Request $request)
@@ -142,45 +144,44 @@ class EventController extends Controller
         $query = $request->get('q');
         $category = $request->get('category');
         $date = $request->get('date');
-        
+
         try {
             DB::connection()->getPdo();
-            
+
             $events = Event::published()->upcoming();
-            
+
             if ($query) {
-                $events = $events->where(function($q) use ($query) {
+                $events = $events->where(function ($q) use ($query) {
                     $q->where('title', 'like', '%' . $query . '%')
-                      ->orWhere('description', 'like', '%' . $query . '%')
-                      ->orWhere('organizer', 'like', '%' . $query . '%');
+                        ->orWhere('description', 'like', '%' . $query . '%')
+                        ->orWhere('organizer', 'like', '%' . $query . '%');
                 });
             }
-            
+
             if ($category) {
                 $events = $events->where('category_id', $category);
             }
-            
+
             if ($date) {
                 $events = $events->whereDate('event_date', $date);
             }
-            
+
             $events = $events->paginate(12)->appends($request->query());
-            
         } catch (Exception $e) {
             // Fallback to dummy data with basic filtering
             $eventsData = $this->getDummyEvents();
-            
+
             if ($query) {
-                $eventsData = array_filter($eventsData, function($event) use ($query) {
+                $eventsData = array_filter($eventsData, function ($event) use ($query) {
                     return stripos($event['title'], $query) !== false ||
-                           stripos($event['description'], $query) !== false ||
-                           stripos($event['organizer'], $query) !== false;
+                        stripos($event['description'], $query) !== false ||
+                        stripos($event['organizer'], $query) !== false;
                 });
             }
-            
+
             $events = $this->createPaginatedCollection($eventsData, 12);
         }
-        
+
         return view('concert', compact('events'));
     }
 
@@ -189,18 +190,17 @@ class EventController extends Controller
         try {
             DB::connection()->getPdo();
             $events = Event::published()->upcoming()->where('featured', true)->paginate(12);
-            
+
             if ($events->isEmpty()) {
                 // Get first 3 dummy events as featured
                 $eventsData = array_slice($this->getDummyEvents(), 0, 3, true);
                 $events = $this->createPaginatedCollection($eventsData, 12);
             }
-            
         } catch (Exception $e) {
             $eventsData = array_slice($this->getDummyEvents(), 0, 3, true);
             $events = $this->createPaginatedCollection($eventsData, 12);
         }
-        
+
         return view('concert', compact('events'));
     }
 
@@ -292,15 +292,15 @@ class EventController extends Controller
 
     private function createPaginatedCollection($data, $perPage = 12)
     {
-        $collection = collect($data)->map(function($event) {
+        $collection = collect($data)->map(function ($event) {
             return (object) $event;
         });
-        
+
         // Simple pagination simulation
         $currentPage = request()->get('page', 1);
         $offset = ($currentPage - 1) * $perPage;
         $items = $collection->slice($offset, $perPage)->values();
-        
+
         return $items;
     }
 
@@ -310,21 +310,20 @@ class EventController extends Controller
         try {
             DB::connection()->getPdo();
             $events = Event::published()->upcoming()->paginate(12);
-            
+
             if ($events->isEmpty()) {
                 $eventsData = $this->getDummyEvents();
-                $events = collect($eventsData)->map(function($event) {
+                $events = collect($eventsData)->map(function ($event) {
                     return (object) $event;
                 });
             }
-            
         } catch (Exception $e) {
             $eventsData = $this->getDummyEvents();
-            $events = collect($eventsData)->map(function($event) {
+            $events = collect($eventsData)->map(function ($event) {
                 return (object) $event;
             });
         }
-        
+
         return response()->json($events);
     }
 
@@ -333,23 +332,36 @@ class EventController extends Controller
         try {
             DB::connection()->getPdo();
             $event = Event::find($id);
-            
+
             if (!$event) {
                 $eventsData = $this->getDummyEvents();
                 $eventArray = $eventsData[$id] ?? null;
                 $event = $eventArray ? (object) $eventArray : null;
             }
-            
         } catch (Exception $e) {
             $eventsData = $this->getDummyEvents();
             $eventArray = $eventsData[$id] ?? null;
             $event = $eventArray ? (object) $eventArray : null;
         }
-        
+
         if (!$event) {
             return response()->json(['error' => 'Event not found'], 404);
         }
-        
+
         return response()->json($event);
+    }
+
+    public function invoice($invoice_number)
+    {
+        return view('invoice', [
+            'invoice_number' => 'INV-20250706-001',
+            'purchase_datetime' => '2025-07-06 22:30 WIB',
+            'event_name' => 'CRSL Land Festival',
+            'seat_info' => 'VIP A12',
+            'event_location' => 'Lap. Kenari Jogja',
+            'event_datetime' => '2025-09-27 15:00 WIB',
+            'organizer' => 'CRSL',
+            'amount_due' => 130000
+        ]);
     }
 }
