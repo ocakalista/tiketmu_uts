@@ -17,21 +17,20 @@ use App\Http\Controllers\Admin\BookingController;
 
 // Admin Routes
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
-    
+
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-    
+
     // Concert Management
     Route::resource('concerts', ConcertController::class);
-    
+
     // Booking Management
     Route::resource('bookings', BookingController::class)->except(['create', 'store', 'edit']);
-    
 });
 
 // Route untuk halaman utama dan statis
 Route::get('/', function () {
-    return view('welcome'); // Gunakan satu view saja
+    return view('index'); // Gunakan satu view saja
 })->name('home');
 
 Route::get('/about', function () {
@@ -70,6 +69,7 @@ Route::get('/concert/detail/{id}', [EventController::class, 'detail'])->name('co
 // Detail routes - Multiple patterns untuk fleksibilitas
 Route::get('/detail/{id}', [EventController::class, 'detail'])->name('detail');
 Route::get('/event/detail/{id}', [EventController::class, 'detail'])->name('event.detail');
+Route::get('/invoice/{invoice_number}', [EventController::class, 'invoice'])->name('event.detail');
 
 // API Routes untuk AJAX (optional)
 Route::prefix('api')->name('api.')->group(function () {
@@ -82,23 +82,23 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::get('/signup', [AuthController::class, 'showJoinForm'])->name('join');
     Route::post('/login', [AuthController::class, 'processLogin'])->name('login.process');
-    Route::post('/signup', [AuthController::class, 'processSignup'])->name('signup.store');
+    Route::post('/signup', [AuthController::class, 'processJoin'])->name('signup.store');
 });
 
 // Route untuk authenticated users
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
-    
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
     // Booking routes - perlu login
     Route::post('/event/{id}/book', [EventController::class, 'book'])->name('event.book');
     Route::post('/events/{id}/book', [EventController::class, 'book'])->name('events.book');
     Route::post('/book/{id}', [EventController::class, 'book'])->name('book');
-    
+
     // Profile routes
     Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
     Route::put('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
-    
+
     // Booking history
     Route::get('/my-bookings', [EventController::class, 'myBookings'])->name('bookings.index');
 });
